@@ -3,61 +3,56 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import { useRouter } from 'expo-router';
 import supabase from '@/lib/supabaseClient';
 
-export default function LoginScreen() {
-  const [phoneNumber, setPhoneNumber] = useState('');
+export default function SignupEmailOtpScreen() {
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const router = useRouter();
 
-  const handleSendOTP = async () => {
-    const cleaned = phoneNumber.replace(/\D/g, '');
-    if (cleaned.length !== 10) {
-      Alert.alert('Error', 'Please enter a valid 10-digit phone number');
+  const handleSendCode = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-    const fullPhone = `+91${cleaned}`;
     try {
       setIsSending(true);
       const { error } = await supabase.auth.signInWithOtp({
-        phone: fullPhone,
-        options: { channel: 'sms', shouldCreateUser: true },
+        email,
+        options: { shouldCreateUser: true },
       });
       if (error) throw error;
       setShowOtpInput(true);
-      Alert.alert('OTP sent', 'Enter the 6-digit code you received');
+      Alert.alert('Code sent', 'Enter the 6-digit code sent to your email');
     } catch (err: any) {
-      Alert.alert('Failed to send OTP', err.message ?? 'Unknown error');
+      Alert.alert('Failed to send code', err.message ?? 'Unknown error');
     } finally {
       setIsSending(false);
     }
   };
 
-  const handleVerifyOTP = async () => {
+  const handleVerifyCode = async () => {
     if (otp.length !== 6) {
-      Alert.alert('Error', 'Please enter a valid 6-digit OTP');
+      Alert.alert('Error', 'Please enter a valid 6-digit code');
       return;
     }
-    const cleaned = phoneNumber.replace(/\D/g, '');
-    const fullPhone = `+91${cleaned}`;
     try {
       setIsVerifying(true);
       const { data, error } = await supabase.auth.verifyOtp({
-        phone: fullPhone,
+        email,
         token: otp,
-        type: 'sms',
+        type: 'email',
       });
       if (error) throw error;
       if (data?.session) {
         router.replace('/(tabs)');
       } else {
-        // In some cases, session may be null until refresh
         const sessionRes = await supabase.auth.getSession();
         if (sessionRes.data.session) {
           router.replace('/(tabs)');
         } else {
-          Alert.alert('Verification', 'OTP verified, but no session found. Try again.');
+          Alert.alert('Verification', 'Code verified, but no session found. Try again.');
         }
       }
     } catch (err: any) {
@@ -73,30 +68,27 @@ export default function LoginScreen() {
         <View style={styles.logoContainer}>
           <Text style={styles.logo}>🌱</Text>
         </View>
-        <Text style={styles.title}>Welcome to Preethvi</Text>
-        <Text style={styles.subtitle}>Your AI Farming Assistant</Text>
+        <Text style={styles.title}>Create your account</Text>
+        <Text style={styles.subtitle}>Sign in or sign up with email OTP</Text>
       </View>
 
       <View style={styles.formContainer}>
-        <Text style={styles.label}>Phone Number</Text>
-        <View style={styles.phoneInputContainer}>
-          <Text style={styles.countryCode}>+91</Text>
-          <TextInput
-            style={styles.phoneInput}
-            placeholder="Enter your phone number"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            keyboardType="phone-pad"
-            maxLength={10}
-          />
-        </View>
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="you@example.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
 
         {showOtpInput && (
           <View style={styles.otpContainer}>
-            <Text style={styles.label}>Enter OTP</Text>
+            <Text style={styles.label}>Enter Code</Text>
             <TextInput
               style={styles.input}
-              placeholder="6-digit OTP"
+              placeholder="6-digit code"
               value={otp}
               onChangeText={setOtp}
               keyboardType="number-pad"
@@ -107,20 +99,16 @@ export default function LoginScreen() {
 
         <TouchableOpacity
           style={styles.button}
-          onPress={showOtpInput ? handleVerifyOTP : handleSendOTP}
+          onPress={showOtpInput ? handleVerifyCode : handleSendCode}
           disabled={isSending || isVerifying}
         >
           <Text style={styles.buttonText}>
-            {showOtpInput ? (isVerifying ? 'Verifying...' : 'Verify OTP') : (isSending ? 'Sending...' : 'Send OTP')}
+            {showOtpInput ? (isVerifying ? 'Verifying...' : 'Verify Code') : (isSending ? 'Sending...' : 'Send Code')}
           </Text>
         </TouchableOpacity>
 
-        <Text style={styles.termsText}>
-          By continuing, you agree to our Terms of Service and Privacy Policy
-        </Text>
-
-        <TouchableOpacity onPress={() => router.push('/(onboarding)/signup')} style={{ marginTop: 12, alignItems: 'center' }}>
-          <Text style={{ color: '#4A7C59', fontWeight: '600' }}>Use email instead</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 12, alignItems: 'center' }}>
+          <Text style={{ color: '#4A7C59', fontWeight: '600' }}>Use phone instead</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -169,27 +157,6 @@ const styles = StyleSheet.create({
     color: '#4A7C59',
     marginBottom: 8,
   },
-  phoneInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-  },
-  countryCode: {
-    padding: 16,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#4A7C59',
-    borderRightWidth: 1,
-    borderRightColor: '#E5E5E5',
-  },
-  phoneInput: {
-    flex: 1,
-    padding: 16,
-    fontSize: 18,
-  },
   input: {
     backgroundColor: 'white',
     padding: 16,
@@ -213,10 +180,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  termsText: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#666',
-    marginTop: 20,
-  },
 });
+
