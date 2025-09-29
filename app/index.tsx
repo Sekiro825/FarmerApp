@@ -1,20 +1,40 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import supabase from '@/lib/supabaseClient';
 
 export default function IndexScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    // In a real app, check if user is logged in and language is selected
-    const checkInitialRoute = async () => {
-      // For demo, always go to onboarding
-      setTimeout(() => {
+    let isMounted = true;
+
+    const routeBySession = async () => {
+      const { data } = await supabase.auth.getSession();
+      const hasSession = !!data.session;
+      if (!isMounted) return;
+      if (hasSession) {
+        router.replace('/(tabs)');
+      } else {
         router.replace('/(onboarding)/splash');
-      }, 1000);
+      }
     };
 
-    checkInitialRoute();
+    // initial check
+    routeBySession();
+
+    // subscribe to auth state changes
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
+      if (session) {
+        router.replace('/(tabs)');
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   return (
