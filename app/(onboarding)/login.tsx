@@ -4,66 +4,38 @@ import { useRouter } from 'expo-router';
 import supabase from '@/lib/supabaseClient';
 
 export default function LoginScreen() {
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState('');
-  const [showOtpInput, setShowOtpInput] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSigningIn, setIsSigningIn] = useState(false);
   const router = useRouter();
 
-  const handleSendOTP = async () => {
-    const cleaned = phoneNumber.replace(/\D/g, '');
-    if (cleaned.length !== 10) {
-      Alert.alert('Error', 'Please enter a valid 10-digit phone number');
+  const handleLogin = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-    const fullPhone = `+91${cleaned}`;
-    try {
-      setIsSending(true);
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: fullPhone,
-        options: { channel: 'sms', shouldCreateUser: true },
-      });
-      if (error) throw error;
-      setShowOtpInput(true);
-      Alert.alert('OTP sent', 'Enter the 6-digit code you received');
-    } catch (err: any) {
-      Alert.alert('Failed to send OTP', err.message ?? 'Unknown error');
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handleVerifyOTP = async () => {
-    if (otp.length !== 6) {
-      Alert.alert('Error', 'Please enter a valid 6-digit OTP');
+    if (!password || password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
       return;
     }
-    const cleaned = phoneNumber.replace(/\D/g, '');
-    const fullPhone = `+91${cleaned}`;
     try {
-      setIsVerifying(true);
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: fullPhone,
-        token: otp,
-        type: 'sms',
-      });
+      setIsSigningIn(true);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       if (data?.session) {
         router.replace('/(tabs)');
       } else {
-        // In some cases, session may be null until refresh
         const sessionRes = await supabase.auth.getSession();
         if (sessionRes.data.session) {
           router.replace('/(tabs)');
         } else {
-          Alert.alert('Verification', 'OTP verified, but no session found. Try again.');
+          Alert.alert('Login', 'Logged in, but no session found. Try again.');
         }
       }
     } catch (err: any) {
-      Alert.alert('Verification failed', err.message ?? 'Unknown error');
+      Alert.alert('Login failed', err.message ?? 'Unknown error');
     } finally {
-      setIsVerifying(false);
+      setIsSigningIn(false);
     }
   };
 
@@ -78,40 +50,32 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.formContainer}>
-        <Text style={styles.label}>Phone Number</Text>
-        <View style={styles.phoneInputContainer}>
-          <Text style={styles.countryCode}>+91</Text>
-          <TextInput
-            style={styles.phoneInput}
-            placeholder="Enter your phone number"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            keyboardType="phone-pad"
-            maxLength={10}
-          />
-        </View>
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="you@example.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
 
-        {showOtpInput && (
-          <View style={styles.otpContainer}>
-            <Text style={styles.label}>Enter OTP</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="6-digit OTP"
-              value={otp}
-              onChangeText={setOtp}
-              keyboardType="number-pad"
-              maxLength={6}
-            />
-          </View>
-        )}
+        <Text style={styles.label}>Password</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
 
         <TouchableOpacity
           style={styles.button}
-          onPress={showOtpInput ? handleVerifyOTP : handleSendOTP}
-          disabled={isSending || isVerifying}
+          onPress={handleLogin}
+          disabled={isSigningIn}
         >
           <Text style={styles.buttonText}>
-            {showOtpInput ? (isVerifying ? 'Verifying...' : 'Verify OTP') : (isSending ? 'Sending...' : 'Send OTP')}
+            {isSigningIn ? 'Signing in...' : 'Log in'}
           </Text>
         </TouchableOpacity>
 
@@ -120,7 +84,7 @@ export default function LoginScreen() {
         </Text>
 
         <TouchableOpacity onPress={() => router.push('/(onboarding)/signup')} style={{ marginTop: 12, alignItems: 'center' }}>
-          <Text style={{ color: '#4A7C59', fontWeight: '600' }}>Use email instead</Text>
+          <Text style={{ color: '#4A7C59', fontWeight: '600' }}>Create an account</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -169,27 +133,6 @@ const styles = StyleSheet.create({
     color: '#4A7C59',
     marginBottom: 8,
   },
-  phoneInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-  },
-  countryCode: {
-    padding: 16,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#4A7C59',
-    borderRightWidth: 1,
-    borderRightColor: '#E5E5E5',
-  },
-  phoneInput: {
-    flex: 1,
-    padding: 16,
-    fontSize: 18,
-  },
   input: {
     backgroundColor: 'white',
     padding: 16,
@@ -197,9 +140,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E5E5',
     fontSize: 18,
-  },
-  otpContainer: {
-    marginTop: 10,
   },
   button: {
     backgroundColor: '#4A7C59',
