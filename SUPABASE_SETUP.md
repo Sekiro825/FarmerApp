@@ -1,6 +1,6 @@
 ## Supabase integration
 
-This app uses Supabase for Auth (phone/email OTP), Database (Postgres), and Storage.
+This app uses Supabase for Auth (email/password), Database (Postgres), and Storage.
 
 ### 1) Create a Supabase project
 - Go to `https://app.supabase.com`
@@ -53,10 +53,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 ```
 
 ### 5) Auth flows
-- Phone OTP (India +91 example) is wired in `app/(onboarding)/login.tsx` using `signInWithOtp` and `verifyOtp(type: 'sms')`.
-- Email OTP is wired in `app/(onboarding)/signup.tsx` using `signInWithOtp` and `verifyOtp(type: 'email')`.
+- Email/password login is in `app/(onboarding)/login.tsx` using `signInWithPassword({ email, password })`.
+- Email/password signup is in `app/(onboarding)/signup.tsx` using `signUp({ email, password })`.
 
-On success, both redirect to `/(tabs)`.
+On success, users are redirected to `/(tabs)`. If your project requires email confirmation, users will receive a confirmation email after sign up; they must confirm before logging in.
 
 ### 6) Routing and gating
 - Initial route check in `app/index.tsx` uses `supabase.auth.getSession()` and redirects to `/(tabs)` when a session exists, otherwise to the onboarding splash.
@@ -64,8 +64,7 @@ On success, both redirect to `/(tabs)`.
 
 ### 7) Enable Auth providers in Supabase
 In the Supabase dashboard:
-- Auth → Providers → enable Email and Phone
-- For phone, configure SMS sending (Twilio, etc.) in Auth → SMS. For local/dev, you can enable test mode or use email OTP instead.
+- Auth → Providers → enable Email (Password)
 
 ### 8) Database & Storage usage
 After auth, you can access the user via:
@@ -78,7 +77,6 @@ Use `supabase.from('table').select('*')` for Postgres and `supabase.storage.from
 
 ### 9) Common gotchas
 - Make sure `EXPO_PUBLIC_...` vars are present in the environment of the Expo process (web, iOS, Android). Restart the dev server after adding envs.
-- Phone auth requires an SMS provider configured in Supabase and proper E.164 phone numbers (e.g., `+919876543210`). The login screen prepends `+91`.
 - For iOS/Android builds, ensure AsyncStorage is properly autolinked; with Expo, this happens automatically.
 
 ### 10) Development
@@ -88,5 +86,5 @@ Run the app:
 npm run dev
 ```
 
-Then test login with email code first to validate envs. For phone OTP, configure SMS in Supabase.
+Then create an account via the signup screen and log in with email/password.
 

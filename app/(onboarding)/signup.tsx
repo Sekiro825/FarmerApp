@@ -3,62 +3,35 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'reac
 import { useRouter } from 'expo-router';
 import supabase from '@/lib/supabaseClient';
 
-export default function SignupEmailOtpScreen() {
+export default function SignupScreen() {
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [showOtpInput, setShowOtpInput] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [password, setPassword] = useState('');
+  const [isSigningUp, setIsSigningUp] = useState(false);
   const router = useRouter();
 
-  const handleSendCode = async () => {
+  const handleSignup = async () => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-    try {
-      setIsSending(true);
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { shouldCreateUser: true },
-      });
-      if (error) throw error;
-      setShowOtpInput(true);
-      Alert.alert('Code sent', 'Enter the 6-digit code sent to your email');
-    } catch (err: any) {
-      Alert.alert('Failed to send code', err.message ?? 'Unknown error');
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handleVerifyCode = async () => {
-    if (otp.length !== 6) {
-      Alert.alert('Error', 'Please enter a valid 6-digit code');
+    if (!password || password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
       return;
     }
     try {
-      setIsVerifying(true);
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token: otp,
-        type: 'email',
-      });
+      setIsSigningUp(true);
+      const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
       if (data?.session) {
         router.replace('/(tabs)');
       } else {
-        const sessionRes = await supabase.auth.getSession();
-        if (sessionRes.data.session) {
-          router.replace('/(tabs)');
-        } else {
-          Alert.alert('Verification', 'Code verified, but no session found. Try again.');
-        }
+        Alert.alert('Check your email', 'We sent a confirmation link. After confirming, log in.');
+        router.replace('/(onboarding)/login');
       }
     } catch (err: any) {
-      Alert.alert('Verification failed', err.message ?? 'Unknown error');
+      Alert.alert('Signup failed', err.message ?? 'Unknown error');
     } finally {
-      setIsVerifying(false);
+      setIsSigningUp(false);
     }
   };
 
@@ -69,7 +42,7 @@ export default function SignupEmailOtpScreen() {
           <Text style={styles.logo}>🌱</Text>
         </View>
         <Text style={styles.title}>Create your account</Text>
-        <Text style={styles.subtitle}>Sign in or sign up with email OTP</Text>
+        <Text style={styles.subtitle}>Sign up with your email and password</Text>
       </View>
 
       <View style={styles.formContainer}>
@@ -83,32 +56,27 @@ export default function SignupEmailOtpScreen() {
           autoCapitalize="none"
         />
 
-        {showOtpInput && (
-          <View style={styles.otpContainer}>
-            <Text style={styles.label}>Enter Code</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="6-digit code"
-              value={otp}
-              onChangeText={setOtp}
-              keyboardType="number-pad"
-              maxLength={6}
-            />
-          </View>
-        )}
+        <Text style={styles.label}>Password</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Create a password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
 
         <TouchableOpacity
           style={styles.button}
-          onPress={showOtpInput ? handleVerifyCode : handleSendCode}
-          disabled={isSending || isVerifying}
+          onPress={handleSignup}
+          disabled={isSigningUp}
         >
           <Text style={styles.buttonText}>
-            {showOtpInput ? (isVerifying ? 'Verifying...' : 'Verify Code') : (isSending ? 'Sending...' : 'Send Code')}
+            {isSigningUp ? 'Creating account...' : 'Create account'}
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 12, alignItems: 'center' }}>
-          <Text style={{ color: '#4A7C59', fontWeight: '600' }}>Use phone instead</Text>
+        <TouchableOpacity onPress={() => router.replace('/(onboarding)/login')} style={{ marginTop: 12, alignItems: 'center' }}>
+          <Text style={{ color: '#4A7C59', fontWeight: '600' }}>Already have an account? Log in</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -164,9 +132,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E5E5',
     fontSize: 18,
-  },
-  otpContainer: {
-    marginTop: 10,
   },
   button: {
     backgroundColor: '#4A7C59',
