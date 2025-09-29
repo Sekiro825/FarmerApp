@@ -8,5 +8,6 @@ export default function OnboardingLayout() {
       <Stack.Screen name="login" />
       <Stack.Screen name="signup" />
     </Stack>
+
   );
 }
