@@ -10,12 +10,13 @@ export default function IndexScreen() {
     let isMounted = true;
 
     const routeBySession = async () => {
-      const { data } = await supabase.auth.getSession();
-      const hasSession = !!data.session;
-      if (!isMounted) return;
-      if (hasSession) {
-        router.replace('/(tabs)');
-      } else {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const hasSession = !!data.session;
+        if (!isMounted) return;
+        router.replace(hasSession ? '/(tabs)' : '/(onboarding)/splash');
+      } catch {
+        if (!isMounted) return;
         router.replace('/(onboarding)/splash');
       }
     };
