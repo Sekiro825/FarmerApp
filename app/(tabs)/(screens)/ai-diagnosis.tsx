@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Camera, Upload, ArrowLeft, CircleCheck as CheckCircle } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { getDiagnosis } from '@/backend/ai/diagnosisService';
 
 export default function AIDiagnosisScreen() {
   const router = useRouter();
@@ -9,48 +11,64 @@ export default function AIDiagnosisScreen() {
   const [diagnosisResult, setDiagnosisResult] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const handleTakePhoto = () => {
-    // Placeholder for camera functionality
-    setSelectedImage('https://images.pexels.com/photos/4021979/pexels-photo-4021979.jpeg?auto=compress&cs=tinysrgb&w=400');
-    setTimeout(() => {
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Camera permission is needed to take a photo.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.9,
+      });
+      if (result.canceled) return;
+
+      const photo = result.assets[0];
+      setSelectedImage(photo.uri);
       setIsAnalyzing(true);
-      setTimeout(() => {
-        setIsAnalyzing(false);
-        setDiagnosisResult({
-          disease: 'Leaf Blight',
-          confidence: '92%',
-          severity: 'Moderate',
-          recommendations: [
-            'Remove affected leaves immediately',
-            'Apply copper-based fungicide spray',
-            'Improve air circulation around plants',
-            'Avoid overhead watering'
-          ]
-        });
-      }, 2000);
-    }, 500);
+      const { imageUrl, diagnosis } = await getDiagnosis(photo);
+      setDiagnosisResult({
+        disease: diagnosis.disease,
+        confidence: `${Math.round((diagnosis.confidence ?? 0) * 100)}%`,
+        severity: diagnosis.severity,
+        recommendations: diagnosis.recommendations ?? [],
+      });
+    } catch (err: any) {
+      Alert.alert('Analysis failed', err?.message || 'Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
-  const handleUploadPhoto = () => {
-    // Placeholder for photo upload
-    setSelectedImage('https://images.pexels.com/photos/4021979/pexels-photo-4021979.jpeg?auto=compress&cs=tinysrgb&w=400');
-    setTimeout(() => {
+  const handleUploadPhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Gallery permission is needed to select a photo.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.9,
+      });
+      if (result.canceled) return;
+
+      const photo = result.assets[0];
+      setSelectedImage(photo.uri);
       setIsAnalyzing(true);
-      setTimeout(() => {
-        setIsAnalyzing(false);
-        setDiagnosisResult({
-          disease: 'Healthy Plant',
-          confidence: '96%',
-          severity: 'None',
-          recommendations: [
-            'Plant looks healthy!',
-            'Continue regular watering schedule',
-            'Monitor for any changes',
-            'Consider preventive measures during monsoon'
-          ]
-        });
-      }, 2000);
-    }, 500);
+      const { imageUrl, diagnosis } = await getDiagnosis(photo);
+      setDiagnosisResult({
+        disease: diagnosis.disease,
+        confidence: `${Math.round((diagnosis.confidence ?? 0) * 100)}%`,
+        severity: diagnosis.severity,
+        recommendations: diagnosis.recommendations ?? [],
+      });
+    } catch (err: any) {
+      Alert.alert('Analysis failed', err?.message || 'Please try again.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const resetDiagnosis = () => {
