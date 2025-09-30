@@ -19,7 +19,6 @@ export default function AIDiagnosisScreen() {
         return;
       }
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.9,
       });
       if (result.canceled) return;
@@ -49,7 +48,6 @@ export default function AIDiagnosisScreen() {
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.9,
       });
       if (result.canceled) return;
